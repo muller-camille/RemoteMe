@@ -70,7 +70,10 @@ un flux affichable par le navigateur (un navigateur ne sait pas ouvrir une conne
 **Docker n'est pas nécessaire** : guacd est un simple paquet Linux. Trois façons de l'installer,
 au choix :
 
-**a) Paquet natif sur une petite VM Linux** (Debian / Ubuntu) — recommandé en production :
+**a) Paquet natif sur une petite VM Linux** (Debian / Ubuntu) — recommandé en production.
+La VM peut être une machine virtuelle **Hyper-V sur le serveur Windows lui-même**. guacd
+consomme surtout du processeur (compression des images) : dimensionnez la VM selon le nombre
+de sessions simultanées.
 
 ```bash
 sudo apt install guacd
@@ -83,19 +86,29 @@ CONF
 sudo systemctl enable --now guacd
 ```
 
-**b) Sur le serveur IIS lui-même, via WSL2** (Windows Server 2022 ou plus récent) — aucune
-machine supplémentaire :
+**b) Dans WSL2 sur le serveur IIS** (Windows Server 2022 ou plus récent). Les distributions
+WSL appartiennent à un utilisateur et WSL ne fonctionne pas sous le compte SYSTEM : créez un
+compte local dédié (ex. `svc-guacd`), puis, **connecté avec ce compte** :
 
 ```powershell
-wsl --install -d Ubuntu            # puis redémarrer
+wsl --install -d Ubuntu            # puis redémarrer et finir l'initialisation d'Ubuntu
 wsl -d Ubuntu -u root -- apt-get install -y guacd
-# Tâche planifiée « au démarrage » (compte SYSTEM) pour lancer guacd et garder WSL actif :
-$action = New-ScheduledTaskAction -Execute 'wsl.exe' -Argument '-d Ubuntu -u root -- /usr/sbin/guacd -f -b 127.0.0.1 -l 4822'
-Register-ScheduledTask -TaskName 'guacd' -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) -User 'SYSTEM' -RunLevel Highest
+```
+
+Enfin, en administrateur, une tâche planifiée lance guacd au démarrage sous ce compte (elle
+garde aussi WSL actif) :
+
+```powershell
+$action  = New-ScheduledTaskAction -Execute 'wsl.exe' -Argument '-d Ubuntu -u root -- /usr/sbin/guacd -f -b 127.0.0.1 -l 4822'
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+Register-ScheduledTask -TaskName 'guacd' -Action $action -Trigger $trigger -Settings $settings `
+    -User "$env:COMPUTERNAME\svc-guacd" -Password '<mot de passe>'
 ```
 
 IIS joint alors guacd sur `127.0.0.1:4822` (redirection localhost de WSL2), ce qui est la
-valeur par défaut de `RemoteMe:Guacd`.
+valeur par défaut de `RemoteMe:Guacd`. Cette variante n'a pas pu être essayée sur un vrai
+Windows Server pendant le développement : préférez la VM (a) si possible.
 
 **c) Conteneur Docker**, si Docker est déjà utilisé chez vous :
 
