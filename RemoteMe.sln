@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{7D55930C-AE8A-465C-8F98-1FB4ECA58ED9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteMe.Web", "src\RemoteMe.Web\RemoteMe.Web.csproj", "{F3A82595-22BA-470D-AF8D-6B0B75C9F847}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D8DB39AB-6731-4590-ABA1-056D3A0F6830}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteMe.Tests", "tests\RemoteMe.Tests\RemoteMe.Tests.csproj", "{853ECCF1-2348-48EF-93C3-08936C894A3E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F3A82595-22BA-470D-AF8D-6B0B75C9F847}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3A82595-22BA-470D-AF8D-6B0B75C9F847}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3A82595-22BA-470D-AF8D-6B0B75C9F847}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3A82595-22BA-470D-AF8D-6B0B75C9F847}.Release|Any CPU.Build.0 = Release|Any CPU
+		{853ECCF1-2348-48EF-93C3-08936C894A3E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{853ECCF1-2348-48EF-93C3-08936C894A3E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{853ECCF1-2348-48EF-93C3-08936C894A3E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{853ECCF1-2348-48EF-93C3-08936C894A3E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F3A82595-22BA-470D-AF8D-6B0B75C9F847} = {7D55930C-AE8A-465C-8F98-1FB4ECA58ED9}
+		{853ECCF1-2348-48EF-93C3-08936C894A3E} = {D8DB39AB-6731-4590-ABA1-056D3A0F6830}
+	EndGlobalSection
+EndGlobal

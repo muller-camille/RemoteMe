@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RemoteMe.Web</RootNamespace>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Catalogue des applications, rechargé à chaud ; copié à la publication. -->
+    <Content Update="apps.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Script appelé par RemoteMe:Environments:ResetCommand, publié dans scripts\ (hors wwwroot). -->
+    <None Include="..\..\deploy\Reset-RemoteMeAccount.ps1" Link="scripts\Reset-RemoteMeAccount.ps1" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RemoteMe.Tests" />
+  </ItemGroup>
+
+</Project>
