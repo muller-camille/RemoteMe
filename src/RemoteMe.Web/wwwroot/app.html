@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>RemoteMe</title>
+  <link rel="icon" href="icons/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/site.css">
+  <script type="module" src="js/viewer.js"></script>
+</head>
+<body class="viewer">
+  <div class="stage" id="stage" tabindex="-1"></div>
+
+  <button class="toolbar-handle" id="toolbar-handle" type="button" aria-label="Afficher la barre d'outils"></button>
+  <nav class="toolbar" id="toolbar" aria-label="Barre d'outils">
+    <span class="title"><span class="dot" id="state-dot"></span><span id="app-name">RemoteMe</span></span>
+    <a class="btn btn-quiet" href="./" title="Retour au catalogue">&#8592;<span class="label">Catalogue</span></a>
+    <button class="btn btn-quiet" id="btn-clipboard" type="button" title="Presse-papiers" hidden>&#128203;<span class="label">Presse-papiers</span></button>
+    <button class="btn btn-quiet" id="btn-fullscreen" type="button" title="Plein écran">&#9974;<span class="label">Plein écran</span></button>
+    <button class="btn" id="btn-close" type="button" title="Fermer l'application">&#10005;<span class="label">Fermer</span></button>
+  </nav>
+
+  <section class="panel" id="clipboard-panel" hidden aria-labelledby="clipboard-title">
+    <h2 id="clipboard-title">Presse-papiers</h2>
+    <p>Le texte copié dans l'application apparaît ici. Pour coller dans l'application, saisissez ou collez votre texte puis envoyez-le.</p>
+    <textarea id="clipboard-text" spellcheck="false"></textarea>
+    <div class="panel-actions">
+      <button class="btn btn-quiet" id="clipboard-close" type="button">Fermer</button>
+      <button class="btn btn-primary" id="clipboard-send" type="button">Envoyer vers l'application</button>
+    </div>
+  </section>
+
+  <div class="overlay" id="overlay" role="alertdialog" aria-live="assertive" aria-labelledby="overlay-title">
+    <div class="overlay-card">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="status-icon" id="status-icon" aria-hidden="true">!</div>
+      <h1 id="overlay-title">Préparation de votre environnement…</h1>
+      <p id="overlay-text">Ouverture de l'application, cela peut prendre quelques secondes.</p>
+      <div class="overlay-actions" id="overlay-actions" hidden>
+        <a class="btn" href="./">Catalogue</a>
+        <button class="btn btn-primary" id="btn-retry" type="button">Rouvrir</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

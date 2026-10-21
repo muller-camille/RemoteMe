@@ -1,0 +1,11 @@
+bin/
+obj/
+publish/
+*.user
+.vs/
+logs/
+TestResults/
+# Secrets locaux (mots de passe du pool)
+appsettings.Production.json
+appsettings.*.local.json
+deploy/guacd/drives/

@@ -1,0 +1,19 @@
+# guacd : traduit RDP en protocole Guacamole pour RemoteMe.
+# À exécuter sur une machine Linux (VM, ou WSL2/Docker sur le serveur IIS).
+#
+#   docker compose up -d
+#
+# guacd n'a AUCUNE authentification : n'exposez le port 4822 qu'au serveur IIS
+# (GUACD_BIND = adresse d'écoute, et pare-feu limitant la source au serveur IIS).
+services:
+  guacd:
+    image: guacamole/guacd:1.5.5
+    restart: unless-stopped
+    ports:
+      - "${GUACD_BIND:-127.0.0.1}:4822:4822"
+    environment:
+      GUACD_LOG_LEVEL: info
+    volumes:
+      # Lecteurs virtuels (RemoteMe:Rdp:EnableDrive) : un dossier par environnement.
+      # guacd tourne sous l'UID 1000 : mkdir drives && sudo chown 1000:1000 drives
+      - ./drives:/var/lib/guacamole/drives

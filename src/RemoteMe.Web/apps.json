@@ -1,0 +1,33 @@
+{
+  "Apps": [
+    {
+      "Id": "calc",
+      "Name": "Calculatrice",
+      "Description": "Calculatrice Windows.",
+      "Category": "Outils",
+      "Program": "||calc"
+    },
+    {
+      "Id": "notepad",
+      "Name": "Bloc-notes",
+      "Description": "Éditeur de texte simple.",
+      "Category": "Outils",
+      "Program": "||notepad"
+    },
+    {
+      "Id": "paint",
+      "Name": "Paint",
+      "Description": "Dessin et retouche d'images.",
+      "Category": "Bureautique",
+      "Program": "||mspaint"
+    },
+    {
+      "Id": "wordpad",
+      "Name": "WordPad",
+      "Description": "Traitement de texte.",
+      "Category": "Bureautique",
+      "Program": "||wordpad",
+      "Enabled": false
+    }
+  ]
+}
