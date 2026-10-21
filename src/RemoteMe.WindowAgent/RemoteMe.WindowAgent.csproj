@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- TFM neutre (net8.0, pas le TFM Windows) : les P/Invoke user32 et gdi32 sont de simples
+         declarations qui compilent partout. L'agent ne s'EXECUTE que sous Windows ; l'agent
+         factice (option fake) tourne partout, pour les tests. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>RemoteMe.WindowAgent</RootNamespace>
+    <AssemblyName>RemoteMe.WindowAgent</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- CA1416 : les API Windows ne sont appelées que sous Windows (vérifié à l'exécution). -->
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

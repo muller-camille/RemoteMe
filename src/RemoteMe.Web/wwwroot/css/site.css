@@ -537,3 +537,19 @@ body.viewer {
     transition: none;
   }
 }
+
+/* ---------- Visionneuse par fenêtre ---------- */
+
+#screen {
+  display: block;
+  background: #000;
+}
+
+#status-line {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 20;
+  max-width: calc(100vw - 24px);
+  font-variant-numeric: tabular-nums;
+}

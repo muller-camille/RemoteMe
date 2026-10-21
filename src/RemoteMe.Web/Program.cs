@@ -7,6 +7,7 @@ using RemoteMe.Web.Configuration;
 using RemoteMe.Web.Environments;
 using RemoteMe.Web.Guacamole;
 using RemoteMe.Web.Http;
+using RemoteMe.Web.WindowStream;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,11 +15,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("apps.json", optional: true, reloadOnChange: true);
 
 builder.Services.Configure<RemoteMeOptions>(builder.Configuration.GetSection(RemoteMeOptions.SectionName));
+builder.Services.Configure<WindowStreamOptions>(builder.Configuration.GetSection(WindowStreamOptions.SectionName));
 builder.Services.Configure<CatalogOptions>(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AppCatalog>();
 builder.Services.AddSingleton<EnvironmentPool>();
 builder.Services.AddSingleton<GuacamoleTunnel>();
+builder.Services.AddSingleton<WindowStreamTunnel>();
 builder.Services.AddHostedService<EnvironmentJanitor>();
 
 var knownProxies = builder.Configuration.GetSection("RemoteMe:KnownProxies").Get<string[]>() ?? Array.Empty<string>();
@@ -67,12 +70,12 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/apps", (AppCatalog catalog) => Results.Ok(new
 {
-    apps = catalog.Apps.Select(a => new { a.Id, a.Name, a.Description, a.Category, a.Icon }),
+    apps = catalog.Apps.Select(a => new { a.Id, a.Name, a.Description, a.Category, a.Icon, a.Backend }),
 }));
 
 api.MapGet("/apps/{id}", (string id, AppCatalog catalog) =>
     catalog.Find(id) is { } a
-        ? Results.Ok(new { a.Id, a.Name, a.Description, a.Category, a.Icon })
+        ? Results.Ok(new { a.Id, a.Name, a.Description, a.Category, a.Icon, a.Backend })
         : Results.NotFound());
 
 // Crée le cookie visiteur au besoin : il doit exister avant l'ouverture du tunnel WebSocket.
@@ -109,6 +112,9 @@ api.MapPost("/environment/reset", (HttpContext context, EnvironmentPool pool) =>
 });
 
 app.Map("/tunnel", (HttpContext context, GuacamoleTunnel tunnel) => tunnel.HandleAsync(context));
+
+// Diffusion par fenêtre (une instance d'application par connexion, sans session RDS).
+app.Map("/winstream", (HttpContext context, WindowStreamTunnel tunnel) => tunnel.HandleAsync(context));
 
 app.MapGet("/healthz", async (EnvironmentPool pool, IOptions<RemoteMeOptions> options, CancellationToken token) =>
 {

@@ -25,8 +25,14 @@ public sealed class AppDefinition
     public string? Icon { get; set; }
 
     /// <summary>
-    /// Programme RemoteApp : "||alias" pour une RemoteApp publiée dans la collection RDS (recommandé),
-    /// ou chemin complet si le serveur autorise les programmes non listés. Vide = bureau complet.
+    /// Mode de diffusion : "rdp" (défaut, via guacd et une session RDS) ou "window"
+    /// (une instance de l'application capturée fenêtre par fenêtre, via l'agent, sans session RDS).
+    /// </summary>
+    public string Backend { get; set; } = "rdp";
+
+    /// <summary>
+    /// backend "rdp" : programme RemoteApp ("||alias" d'une RemoteApp publiée, recommandé), vide = bureau complet.
+    /// backend "window" : chemin de l'exécutable à lancer (ex. "notepad.exe" ou "C:\\Apps\\monappli.exe").
     /// </summary>
     public string? Program { get; set; }
 
@@ -86,6 +92,13 @@ public sealed partial class AppCatalog
             if (!seen.Add(app.Id))
             {
                 _logger.LogWarning("Application ignorée : identifiant '{Id}' en double.", app.Id);
+                continue;
+            }
+
+            app.Backend = string.IsNullOrWhiteSpace(app.Backend) ? "rdp" : app.Backend.Trim().ToLowerInvariant();
+            if (app.Backend is not ("rdp" or "window"))
+            {
+                _logger.LogWarning("Application '{Id}' ignorée : backend '{Backend}' inconnu.", app.Id, app.Backend);
                 continue;
             }
 
