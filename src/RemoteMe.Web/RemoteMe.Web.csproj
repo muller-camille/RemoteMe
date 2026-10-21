@@ -17,6 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Partage le protocole agent↔serveur (AgentProtocol, InputEvent). L'agent est lancé comme
+         processus séparé ; on ne réutilise ici que ses types, pas son point d'entrée. -->
+    <ProjectReference Include="..\RemoteMe.WindowAgent\RemoteMe.WindowAgent.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="RemoteMe.Tests" />
   </ItemGroup>
 

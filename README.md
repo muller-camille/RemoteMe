@@ -6,9 +6,12 @@ aucun identifiant). Chaque visiteur dispose de **son propre environnement** (ses
 profil, fichiers), séparé de celui des autres et effacé après son départ.
 
 - Hébergement : **IIS** (ASP.NET Core 8, hébergement *in-process*).
-- Diffusion : protocole **Apache Guacamole** — `guacd` traduit RDP/RemoteApp en un flux
-  affiché dans un `<canvas>` par `guacamole-common-js`.
-- Applications : les **RemoteApp** d'une collection RDS existante (ou un bureau complet).
+- Deux modes de diffusion au choix, par application :
+  - **RDP** (défaut) — `guacd` traduit RDP/RemoteApp d'une collection RDS en un flux affiché
+    dans un `<canvas>` par `guacamole-common-js`. Session Windows isolée par visiteur.
+  - **Fenêtre** ([sans RDP ni guacd](#diffusion-par-fenêtre-sans-rdp)) — un agent lance une
+    instance de l'application sur le serveur, capture sa fenêtre et la diffuse en images. Tout
+    est 100 % Windows ; chaque visiteur a sa propre instance, sur le même bureau.
 
 ## Sommaire
 
@@ -17,10 +20,11 @@ profil, fichiers), séparé de celui des autres et effacé après son départ.
 3. [Installation pas à pas](#installation-pas-à-pas)
 4. [Le catalogue d'applications](#le-catalogue-dapplications)
 5. [Un visiteur = un environnement](#un-visiteur--un-environnement)
-6. [Sécurité](#sécurité)
-7. [Référence de configuration](#référence-de-configuration)
-8. [Développement et tests](#développement-et-tests)
-9. [Limites connues](#limites-connues)
+6. [Diffusion par fenêtre (sans RDP)](#diffusion-par-fenêtre-sans-rdp)
+7. [Sécurité](#sécurité)
+8. [Référence de configuration](#référence-de-configuration)
+9. [Développement et tests](#développement-et-tests)
+10. [Limites connues](#limites-connues)
 
 ## Fonctionnement
 
@@ -309,6 +313,76 @@ pool IIS, qui doit pouvoir fermer des sessions et supprimer des profils sur les 
 session. Utilisez un compte de service dédié (idéalement un gMSA) comme identité du pool,
 administrateur des seuls hôtes de session.
 
+## Diffusion par fenêtre (sans RDP)
+
+Ce mode répond au besoin « une instance différente de l'application par visiteur, sans RDP et
+sans guacd, 100 % Windows ». L'application s'authentifie elle-même (chaque instance a sa propre
+connexion), et plusieurs instances cohabitent sur le **même bureau** du serveur.
+
+```
+Navigateur ──HTTPS/WSS──► IIS (RemoteMe) ──spawn──► RemoteMe.WindowAgent (1 par connexion)
+ <canvas> (images PNG)    /winstream                 lance l'appli, capture sa fenêtre (PrintWindow),
+ clavier / souris  ◄────► relais WebSocket           injecte clavier/souris (PostMessage)
+```
+
+- **Un agent par connexion.** À chaque ouverture, RemoteMe lance `RemoteMe.WindowAgent`, qui
+  démarre une instance de l'application (ex. `notepad.exe`), récupère le handle de sa fenêtre,
+  la capture par `PrintWindow` et l'encode en PNG, et applique le clavier/souris reçus par
+  `PostMessage` adressé à cette fenêtre. Le visiteur B ne voit donc jamais la fenêtre de A.
+- **Aucune session RDS, aucun compte de pool, aucun guacd, aucun Linux.** L'agent est un
+  exécutable .NET publié à côté du site (`RemoteMe.WindowAgent.exe`).
+
+### Configuration
+
+Déclarer l'application avec `"Backend": "window"` dans `apps.json` (le catalogue l'ouvre alors
+dans la visionneuse par fenêtre, `win.html`) :
+
+```json
+{
+  "Id": "monappli",
+  "Name": "Mon application",
+  "Category": "Métier",
+  "Backend": "window",
+  "Program": "C:\\Apps\\MonAppli\\monappli.exe",
+  "Arguments": "",
+  "WorkingDirectory": "C:\\Apps\\MonAppli"
+}
+```
+
+Et activer l'agent dans `appsettings.Production.json` (section `RemoteMe:WindowStream`) :
+
+```json
+{
+  "RemoteMe": {
+    "WindowStream": {
+      "AgentCommand": "RemoteMe.WindowAgent.exe",
+      "Fps": 15,
+      "MaxInstances": 20,
+      "MaxInstancesPerIp": 3
+    }
+  }
+}
+```
+
+`AgentCommand` est résolu depuis le dossier du site, où l'agent est publié automatiquement. Le
+pool d'applications IIS doit tourner sous un compte qui **ouvre une session interactive** (les
+API de capture/fenêtre l'exigent) : en pratique, lancez RemoteMe dans la session d'un compte de
+service connecté au serveur, plutôt que sous l'identité de pool classique. C'est la principale
+contrainte d'exploitation de ce mode.
+
+### Limites de ce mode
+
+- Pensé pour les **applications Win32 classiques** (comme le Bloc-notes, beaucoup d'applis
+  métier). Les fenêtres rendues par la carte graphique (DirectX/jeux, certaines vues de
+  navigateurs) se capturent mal avec `PrintWindow`.
+- Pas d'isolation entre instances : elles partagent le bureau, le presse-papiers et les
+  ressources du serveur. Convient à des applications de confiance.
+- Son, presse-papiers et impression ne sont pas encore gérés (prototype) ; images complètes à
+  chaque trame (la compression différentielle reste à faire).
+- **Validé de bout en bout avec un agent factice** (navigateur ↔ serveur ↔ agent : affichage,
+  souris, clavier, instances multiples). Le vrai agent Windows (`PrintWindow` + `PostMessage`)
+  est écrit et compile, mais n'a pas encore été exécuté sur un vrai poste Windows.
+
 ## Sécurité
 
 L'absence de login est **voulue** : toute personne qui atteint l'URL peut utiliser les
@@ -371,6 +445,12 @@ redémarrage du pool IIS ; `apps.json` est relu à chaud.
 | `Environments:ResetCommand` / `ResetArguments` | — | Commande de réinitialisation ; jetons `{username}`, `{domain}`, `{hostname}` |
 | `Environments:ResetTimeoutSeconds` | `120` | Délai maximal de la réinitialisation |
 | `KnownProxies` | `[]` | IP des reverse proxies de confiance (`X-Forwarded-For`) |
+| `WindowStream:AgentCommand` | — | Exécutable de l'agent par fenêtre (ex. `RemoteMe.WindowAgent.exe`) ; vide = mode désactivé |
+| `WindowStream:AgentArgumentPrefix` | `[]` | Arguments avant ceux générés (ex. le `.dll` quand `AgentCommand` = `dotnet`) |
+| `WindowStream:Fps` | `15` | Images par seconde demandées à l'agent |
+| `WindowStream:MaxInstances` / `MaxInstancesPerIp` | `20` / `3` | Instances simultanées, au total et par IP |
+| `WindowStream:AgentStartTimeoutSeconds` | `20` | Délai de démarrage de l'agent |
+| `WindowStream:Fake` | `false` | Agent de démonstration (image de synthèse, pour tester hors Windows) |
 
 ## Développement et tests
 
@@ -399,22 +479,41 @@ Puis `http://localhost:5051/app.html?app=desktop` : deux navigateurs différents
 `kiosk01` et `kiosk02` ; un troisième voit « Tous les environnements sont occupés ».
 (xrdp ne gère pas RemoteApp : ce banc d'essai affiche un bureau complet.)
 
+Essai de la **diffusion par fenêtre** sans Windows, avec l'agent factice (image de synthèse) :
+
+```bash
+AGENT=$(readlink -f src/RemoteMe.WindowAgent/bin/Debug/net8.0/RemoteMe.WindowAgent.dll)
+dotnet run --project src/RemoteMe.Web -- \
+  --RemoteMe:WindowStream:Fake=true --RemoteMe:WindowStream:AgentCommand=dotnet \
+  --RemoteMe:WindowStream:AgentArgumentPrefix:0="$AGENT" \
+  --Apps:5:Id=demo --Apps:5:Name="Démo fenêtre" --Apps:5:Backend=window --Apps:5:Enabled=true
+```
+
+Puis `http://localhost:5051/win.html?app=demo` : l'image animée s'affiche, le carré suit la
+souris et le compteur monte à chaque touche — tout le pipeline navigateur ↔ serveur ↔ agent est
+exercé, y compris plusieurs instances simultanées.
+
 Structure :
 
 ```
 src/RemoteMe.Web/
   Program.cs                 points d'entrée HTTP, en-têtes de sécurité
-  Catalog/                   catalogue apps.json (rechargé à chaud)
-  Environments/              pool de comptes, expiration, réinitialisation
-  Guacamole/                 protocole, poignée de main guacd, tunnel WebSocket
+  Catalog/                   catalogue apps.json (rechargé à chaud), choix du backend
+  Environments/              pool de comptes, expiration, réinitialisation (backend RDP)
+  Guacamole/                 protocole, poignée de main guacd, tunnel WebSocket (backend RDP)
+  WindowStream/              lancement de l'agent et relais (backend fenêtre)
   Http/                      cookie visiteur, contrôle d'origine
-  wwwroot/                   catalogue (index.html) et visionneuse (app.html)
+  wwwroot/                   catalogue (index.html), visionneuses app.html (RDP) et win.html (fenêtre)
+src/RemoteMe.WindowAgent/    agent de capture/injection par fenêtre (Win32) + source factice + PNG
 deploy/                      IIS, comptes du pool, réinitialisation, export RemoteApp, guacd
 tests/RemoteMe.Tests/        tests unitaires et d'intégration
 ```
 
 ## Limites connues
 
+- Deux modes au choix par application (`Backend` dans `apps.json`) : **RDP** (guacd + RDS,
+  entièrement testé) et **fenêtre** (agent, sans RDP, [validé avec l'agent factice](#diffusion-par-fenêtre-sans-rdp)
+  mais pas encore exécuté sur un vrai poste Windows).
 - **Un onglet = une connexion RDP.** guacd ne regroupe pas plusieurs RemoteApp dans une même
   connexion comme le client Windows : chaque application ouverte est un onglet distinct (voir
   la restriction « une seule session par utilisateur » plus haut).

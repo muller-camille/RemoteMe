@@ -47,7 +47,9 @@ function renderIcon(app) {
 function renderCard(app) {
   const card = document.createElement('a');
   card.className = 'app-card';
-  card.href = `app.html?app=${encodeURIComponent(app.id)}`;
+  // Deux visionneuses : RDP via guacd (app.html) ou diffusion par fenêtre via l'agent (win.html).
+  const page = app.backend === 'window' ? 'win.html' : 'app.html';
+  card.href = `${page}?app=${encodeURIComponent(app.id)}`;
   // Chaque application dans son onglet : on peut en ouvrir plusieurs dans le même environnement.
   card.target = '_blank';
   card.rel = 'noopener';
