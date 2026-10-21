@@ -55,7 +55,7 @@ profil, fichiers), séparé de celui des autres et effacé après son départ.
 | Élément | Détail |
 |---|---|
 | Serveur web | Windows Server 2016+ avec IIS 10, fonctionnalité **Protocole WebSocket**, [ASP.NET Core 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0) |
-| guacd | Apache Guacamole **1.5.x** (image Docker `guacamole/guacd:1.5.5`) sur une machine Linux, une VM, ou WSL2/Docker sur le serveur IIS |
+| guacd | Apache Guacamole **1.3 ou plus récent**, installé en paquet Linux (`apt install guacd`, **sans Docker**) sur une petite VM Linux ou dans WSL2 sur le serveur IIS — ou en conteneur Docker si vous préférez |
 | RDS | Un ou plusieurs hôtes de session avec des programmes **RemoteApp** publiés dans une collection |
 | Comptes | Un compte Windows standard par visiteur simultané (local à l'hôte de session, ou de domaine) |
 | Réseau | IIS → guacd (TCP 4822) ; guacd → hôtes RDS / broker (TCP 3389) ; visiteurs → IIS (HTTPS 443) |
@@ -65,15 +65,48 @@ profil, fichiers), séparé de celui des autres et effacé après son départ.
 
 ### 1. Démarrer guacd
 
-Sur la machine Linux (ou WSL2) :
+guacd est le seul composant non Windows : il parle RDP aux hôtes de session et le traduit en
+un flux affichable par le navigateur (un navigateur ne sait pas ouvrir une connexion RDP).
+**Docker n'est pas nécessaire** : guacd est un simple paquet Linux. Trois façons de l'installer,
+au choix :
+
+**a) Paquet natif sur une petite VM Linux** (Debian / Ubuntu) — recommandé en production :
+
+```bash
+sudo apt install guacd
+sudo tee /etc/guacamole/guacd.conf >/dev/null <<'CONF'
+[server]
+# Adresse sur laquelle IIS joindra guacd
+bind_host = 10.0.0.20
+bind_port = 4822
+CONF
+sudo systemctl enable --now guacd
+```
+
+**b) Sur le serveur IIS lui-même, via WSL2** (Windows Server 2022 ou plus récent) — aucune
+machine supplémentaire :
+
+```powershell
+wsl --install -d Ubuntu            # puis redémarrer
+wsl -d Ubuntu -u root -- apt-get install -y guacd
+# Tâche planifiée « au démarrage » (compte SYSTEM) pour lancer guacd et garder WSL actif :
+$action = New-ScheduledTaskAction -Execute 'wsl.exe' -Argument '-d Ubuntu -u root -- /usr/sbin/guacd -f -b 127.0.0.1 -l 4822'
+Register-ScheduledTask -TaskName 'guacd' -Action $action -Trigger (New-ScheduledTaskTrigger -AtStartup) -User 'SYSTEM' -RunLevel Highest
+```
+
+IIS joint alors guacd sur `127.0.0.1:4822` (redirection localhost de WSL2), ce qui est la
+valeur par défaut de `RemoteMe:Guacd`.
+
+**c) Conteneur Docker**, si Docker est déjà utilisé chez vous :
 
 ```bash
 cd deploy/guacd
-GUACD_BIND=10.0.0.20 docker compose up -d     # adresse sur laquelle IIS joindra guacd
+GUACD_BIND=10.0.0.20 docker compose up -d
 ```
 
-guacd n'a **aucune authentification** : n'autorisez le port 4822 qu'**en provenance du serveur
-IIS** (pare-feu).
+Versions testées : guacd **1.3.0** (paquet Ubuntu 24.04, sans Docker) et **1.5.5** (image
+Docker). guacd n'a **aucune authentification** : n'autorisez le port 4822 qu'**en provenance
+du serveur IIS** (pare-feu), ou faites-le écouter sur `127.0.0.1` (cas WSL2).
 
 ### 2. Créer les comptes du pool
 
